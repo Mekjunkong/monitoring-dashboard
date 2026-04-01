@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Wifi, Cpu, CalendarClock, BookOpen, Kanban as KanbanIcon, Menu, X } from "lucide-react";
+import { Activity, Wifi, Cpu, CalendarClock, BookOpen, Kanban as KanbanIcon, Menu, X, ChevronDown, ChevronUp, Bot } from "lucide-react";
 import dynamic from "next/dynamic";
 import RefreshTimer from "@/components/RefreshTimer";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import AgentStatusPanel from "@/components/AgentStatusPanel";
 
 // Lazy load heavy components
 const Kanban = dynamic(() => import("@/components/Kanban"), { ssr: false });
@@ -28,6 +29,7 @@ const tabs: { id: Tab; label: string; icon: React.ElementType; shortLabel: strin
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("kanban");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [agentPanelOpen, setAgentPanelOpen] = useState(true);
 
   const { countdown, isPaused, isRefreshing, lastRefreshed, togglePause, manualRefresh } = useAutoRefresh({
     interval: 30000,
@@ -140,6 +142,32 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Agent Status Panel */}
+      <section className="max-w-screen-2xl mx-auto px-4 pt-4">
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <button
+            onClick={() => setAgentPanelOpen(!agentPanelOpen)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Bot size={16} className="text-primary" />
+              <span className="text-sm font-semibold text-foreground">Agent Status</span>
+              <span className="text-xs text-muted-foreground">— 8 agents</span>
+            </div>
+            {agentPanelOpen ? (
+              <ChevronUp size={16} className="text-muted-foreground" />
+            ) : (
+              <ChevronDown size={16} className="text-muted-foreground" />
+            )}
+          </button>
+          {agentPanelOpen && (
+            <div className="px-4 pb-4">
+              <AgentStatusPanel />
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Main content */}
       <main className="max-w-screen-2xl mx-auto px-4 py-4">

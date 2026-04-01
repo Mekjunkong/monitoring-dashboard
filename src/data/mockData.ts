@@ -220,6 +220,130 @@ export const skillLogs: SkillLog[] = [
   { id: 20, skill: "openclaw-guardian", action: "deployed", status: "success", time: "4 days ago", duration: 1.4, message: "Guardian watchdog deployed. Monitoring started." },
 ];
 
+// ============================================================
+// AGENT DATA
+// ============================================================
+
+export interface Agent {
+  id: string;
+  name: string;
+  emoji: string;
+  role: string;
+  status: "active" | "idle" | "error" | "offline";
+  currentTask?: {
+    title: string;
+    progress: number;
+  };
+  resources: {
+    cpu: number;
+    memory: number;
+    uptime: number;
+  };
+  lastUpdated: string;
+  recentLogs: string[];
+}
+
+export const agents: Agent[] = [
+  {
+    id: "eli",
+    name: "Eli",
+    emoji: "💬",
+    role: "Orchestrator",
+    status: "active",
+    currentTask: { title: "Orchestrating WIRO 4x4 marketing", progress: 65 },
+    resources: { cpu: 12, memory: 156, uptime: 8.5 },
+    lastUpdated: "2 min ago",
+    recentLogs: ["Coordinating with Growth Hacker", "WIRO marketing plan in progress"],
+  },
+  {
+    id: "ori",
+    name: "Ori",
+    emoji: "🧠",
+    role: "Strategic Partner",
+    status: "idle",
+    resources: { cpu: 2, memory: 98, uptime: 8.2 },
+    lastUpdated: "15 min ago",
+    recentLogs: ["Completed Wiro Tour strategy analysis", "Waiting for new assignment"],
+  },
+  {
+    id: "taskmaster",
+    name: "Task Master",
+    emoji: "📋",
+    role: "Project Planner",
+    status: "active",
+    currentTask: { title: "Agri Business Week 1 planning", progress: 45 },
+    resources: { cpu: 8, memory: 124, uptime: 7.1 },
+    lastUpdated: "1 min ago",
+    recentLogs: ["Day 1-7 breakdown complete", "Farmer contact scripts ready"],
+  },
+  {
+    id: "scout",
+    name: "Scout",
+    emoji: "📊",
+    role: "Market Research",
+    status: "active",
+    currentTask: { title: "Wiro Tour competitor analysis", progress: 78 },
+    resources: { cpu: 15, memory: 201, uptime: 6.8 },
+    lastUpdated: "30 sec ago",
+    recentLogs: ["Found 10 Chiang Mai competitors", "Pricing analysis 78% complete"],
+  },
+  {
+    id: "finance",
+    name: "Finance Tracker",
+    emoji: "💰",
+    role: "P&L & Metrics",
+    status: "idle",
+    resources: { cpu: 1, memory: 67, uptime: 8.5 },
+    lastUpdated: "2 hrs ago",
+    recentLogs: ["WIRO revenue report complete", "฿45,000 MTD tracked"],
+  },
+  {
+    id: "growthhacker",
+    name: "Growth Hacker",
+    emoji: "🚀",
+    role: "Customer Acquisition",
+    status: "active",
+    currentTask: { title: "Israeli client outreach strategy", progress: 62 },
+    resources: { cpu: 6, memory: 145, uptime: 5.9 },
+    lastUpdated: "3 min ago",
+    recentLogs: ["Identified 5 Israeli web clients", "Email templates drafted"],
+  },
+  {
+    id: "codebuilder",
+    name: "Code Builder",
+    emoji: "⚙️",
+    role: "Full-Stack Dev",
+    status: "active",
+    currentTask: { title: "Monitoring dashboard (this!)", progress: 90 },
+    resources: { cpu: 25, memory: 287, uptime: 4.2 },
+    lastUpdated: "5 sec ago",
+    recentLogs: ["Next.js 16 upgrade complete", "Deploying to Vercel..."],
+  },
+  {
+    id: "salescloser",
+    name: "Sales Closer",
+    emoji: "🤝",
+    role: "Negotiation",
+    status: "idle",
+    resources: { cpu: 0, memory: 45, uptime: 8.5 },
+    lastUpdated: "6 hrs ago",
+    recentLogs: ["Hebrew negotiation scripts ready", "Waiting for first agri deal"],
+  },
+];
+
+export const agentTimeline = [
+  { id: 1, agentId: "codebuilder", emoji: "⚙️", agent: "Code Builder", action: "deployed monitoring dashboard to Vercel", time: "5 min ago", type: "completed" },
+  { id: 2, agentId: "scout", emoji: "📊", agent: "Scout", action: "completed workshop market analysis", time: "20 min ago", type: "completed" },
+  { id: 3, agentId: "eli", emoji: "💬", agent: "Eli", action: "started Wiro Tour 90-day plan", time: "45 min ago", type: "started" },
+  { id: 4, agentId: "growthhacker", emoji: "🚀", agent: "Growth Hacker", action: "drafted Israeli client emails", time: "1 hr ago", type: "completed" },
+  { id: 5, agentId: "taskmaster", emoji: "📋", agent: "Task Master", action: "created agri business Week 1 breakdown", time: "2 hrs ago", type: "completed" },
+  { id: 6, agentId: "ori", emoji: "🧠", agent: "Ori", action: "completed Wiro Tour strategy analysis", time: "3 hrs ago", type: "completed" },
+  { id: 7, agentId: "finance", emoji: "💰", agent: "Finance Tracker", action: "generated WIRO revenue report", time: "4 hrs ago", type: "completed" },
+  { id: 8, agentId: "codebuilder", emoji: "⚙️", agent: "Code Builder", action: "pushed Thailand Hayom to GitHub", time: "5 hrs ago", type: "completed" },
+  { id: 9, agentId: "scout", emoji: "📊", agent: "Scout", action: "audited 3 websites (security + SEO)", time: "6 hrs ago", type: "completed" },
+  { id: 10, agentId: "salescloser", emoji: "🤝", agent: "Sales Closer", action: "prepared Hebrew negotiation scripts", time: "8 hrs ago", type: "completed" },
+];
+
 export const systemHealth = {
   score: 87,
   gatewayUptime: 99.8,
