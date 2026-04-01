@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 14%;
+    --card-foreground: 210 40% 98%;
+    --border: 217 33% 20%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(222 47% 11%);
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(217 33% 25%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(217 33% 35%);
+}
+
+/* Pulse animation for refresh */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 1; }
+  70% { transform: scale(1.1); opacity: 0.5; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+.pulse-dot {
+  animation: pulse-ring 2s infinite;
+}
+
+/* Drag and drop */
+.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.drag-over {
+  background-color: hsl(217 91% 60% / 0.1);
+  border: 2px dashed hsl(217 91% 60%);
+}
+
+/* Card animations */
+.task-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.task-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Gauge chart */
+.gauge-text {
+  dominant-baseline: middle;
+  text-anchor: middle;
+}
+
+/* Status badge */
+.status-online {
+  @apply bg-green-500/20 text-green-400 border border-green-500/30;
+}
+.status-offline {
+  @apply bg-red-500/20 text-red-400 border border-red-500/30;
+}
+.status-degraded {
+  @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+}
+
+/* Progress bar animation */
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: var(--progress); }
+}
+
+.progress-fill {
+  animation: progress-fill 1s ease-out forwards;
+}
+
+/* Recharts custom */
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
