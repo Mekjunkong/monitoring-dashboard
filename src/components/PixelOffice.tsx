@@ -346,11 +346,11 @@ export default function PixelOffice() {
           const j = await bookRes.value.json();
           out.pending = Array.isArray(j?.data) ? j.data.length : (j?.count ?? 0);
           // notify Closer if new pending
-          if (out.pending > prevPendingRef.current && prevPendingRef.current > 0) {
+          if ((out.pending ?? 0) > prevPendingRef.current && prevPendingRef.current > 0) {
             setNotifyIds(s => new Set([...s,"closer"]));
             setTimeout(()=>setNotifyIds(s=>{const n=new Set(s);n.delete("closer");return n;}), 5000);
           }
-          prevPendingRef.current = out.pending;
+          prevPendingRef.current = out.pending ?? 0;
         }
         if (analytRes.status==="fulfilled" && analytRes.value.ok) {
           const j = await analytRes.value.json();
