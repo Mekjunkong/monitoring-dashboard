@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Wifi, Cpu, CalendarClock, BookOpen, Kanban as KanbanIcon, Menu, X, Bot, Sun, Moon, Building2 } from "lucide-react";
+import { Activity, Wifi, Cpu, CalendarClock, BookOpen, Kanban as KanbanIcon, Menu, X, Bot, Sun, Moon, Building2, Terminal } from "lucide-react";
 import RefreshTimer from "@/components/RefreshTimer";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import AgentStatusPanel from "@/components/AgentStatusPanel";
@@ -13,10 +13,11 @@ import SkillLogs from "@/components/SkillLogs";
 import SystemHealth from "@/components/SystemHealth";
 import dynamic from "next/dynamic";
 const PixelOffice = dynamic(() => import("@/components/PixelOffice"), { ssr: false });
+const CCLens = dynamic(() => import("@/components/CCLens"), { ssr: false });
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
 
-type Tab = "agents" | "kanban" | "gateway" | "model" | "cron" | "skills" | "health" | "office";
+type Tab = "agents" | "kanban" | "gateway" | "model" | "cron" | "skills" | "health" | "office" | "cclens";
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; shortLabel: string; desc: string }[] = [
   { id: "office",  label: "Pixel Office",   shortLabel: "Office",  icon: Building2,     desc: "Live pixel art office — watch your agents work" },
@@ -27,6 +28,7 @@ const tabs: { id: Tab; label: string; icon: React.ElementType; shortLabel: strin
   { id: "cron",    label: "Cron Jobs",      shortLabel: "Cron",    icon: CalendarClock, desc: "Scheduled job status and execution history" },
   { id: "skills",  label: "Skill Logs",     shortLabel: "Logs",    icon: BookOpen,      desc: "Agent skill activity log — last 20 entries" },
   { id: "health",  label: "System Health",  shortLabel: "Health",  icon: Activity,      desc: "Overall system health score and active alerts" },
+  { id: "cclens",  label: "CC Lens",         shortLabel: "CC Lens", icon: Terminal,      desc: "Claude Code analytics — reads from ~/.claude/ locally" },
 ];
 
 export default function DashboardPage() {
@@ -194,6 +196,12 @@ export default function DashboardPage() {
         {activeTab === "health" && (
           <div className="max-w-md">
             <SystemHealth />
+          </div>
+        )}
+
+        {activeTab === "cclens" && (
+          <div className="max-w-3xl">
+            <CCLens />
           </div>
         )}
       </main>

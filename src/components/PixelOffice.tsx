@@ -430,6 +430,10 @@ export default function PixelOffice() {
       // character feet at desk top (y+8), body goes up
       CHARACTER_DRAWERS[i](ctx, x+5, y+8, t, working);
 
+      // name label above desk
+      ctx.font = `bold ${S * 2.2}px 'Courier New', monospace`;
+      ctx.fillStyle = agent.color;
+      ctx.fillText(agent.name, (x + 1) * S, (y - 5) * S);
       // status dot
       if (isNotify) { r(ctx,x+23,y-2,4,4,Math.sin(t*10)>0?"#ff4444":"#ff0000"); }
       else { r(ctx,x+24,y-1,2,2,working?"#44ff88":"#555566"); }
