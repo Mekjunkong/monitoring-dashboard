@@ -1,375 +1,459 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-// ── Palette ──────────────────────────────────────────────────────────────────
-const C = {
-  // Floor / walls
-  floor: "#2a2a3e",
-  floorTile: "#252538",
-  wall: "#1a1a2e",
-  wallAccent: "#16213e",
-  // Furniture
-  desk: "#4a3728",
-  deskTop: "#5c4636",
-  monitor: "#1a1a2e",
-  monitorScreen: "#00d4ff",
-  monitorGlow: "#003344",
-  chair: "#2d2d44",
-  plant: "#2d5a27",
-  plantPot: "#8b4513",
-  window: "#1a3a5c",
-  windowLight: "#87ceeb",
-  // Agents
-  eli: "#6c63ff",      // purple — orchestrator
-  scout: "#00b4d8",    // cyan — analytics
-  pen: "#f72585",      // pink — content
-  closer: "#2ec4b6",   // teal — bookings
-  buzz: "#ff9f1c",     // orange — social
-  ledger: "#4caf50",   // green — finance
-  skin: "#ffdbac",
-  hair: "#3d2b1f",
-  // UI
-  text: "#e0e0ff",
-  accent: "#6c63ff",
-  glow: "#00d4ff",
+// ─── Pixel size (each "pixel" = N real pixels) ────────────────────────────
+const P = 3;
+
+// ─── Canvas logical size ───────────────────────────────────────────────────
+const W = 200;
+const H = 140;
+
+// ─── Palette ──────────────────────────────────────────────────────────────
+const PAL = {
+  bg:        "#0d0d1a",
+  wall:      "#12122a",
+  wallLine:  "#1a1a3a",
+  floor:     "#1e1e3a",
+  floorAlt:  "#1a1a32",
+  skirting:  "#2a2a5a",
+  desk:      "#5c3d2e",
+  deskFace:  "#3d2820",
+  deskTop:   "#7a5040",
+  monitor:   "#111122",
+  monBorder: "#2a2a4a",
+  monGlow:   "#001833",
+  chair:     "#1a3a4a",
+  chairSeat: "#22475a",
+  plant1:    "#1a4a20",
+  plant2:    "#2d7a30",
+  pot:       "#8b4513",
+  potRim:    "#a05515",
+  winFrame:  "#2a2a5a",
+  winSky:    "#0a2a4a",
+  winCloud:  "#1a3a6a",
+  winGlow:   "#0066aa",
+  lamp:      "#aaaa22",
+  lampGlow:  "#ffff44",
+  carpet:    "#2a1a3a",
+  white:     "#e8e8ff",
+  dimWhite:  "#9090b0",
+  black:     "#000010",
 };
 
-// ── Pixel renderer helpers ─────────────────────────────────────────────────
-function px(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string) {
-  ctx.fillStyle = color;
-  ctx.fillRect(Math.round(x), Math.round(y), w, h);
-}
-
-// ── Agent definitions ──────────────────────────────────────────────────────
+// ─── Agent defs ────────────────────────────────────────────────────────────
 const AGENTS = [
-  { id: "eli",    name: "Eli",    role: "Orchestrator", color: C.eli,    deskX: 20,  deskY: 60 },
-  { id: "scout",  name: "Scout",  role: "Analytics",    color: C.scout,  deskX: 100, deskY: 60 },
-  { id: "pen",    name: "Pen",    role: "Content",      color: C.pen,    deskX: 180, deskY: 60 },
-  { id: "closer", name: "Closer", role: "Bookings",     color: C.closer, deskX: 260, deskY: 60 },
-  { id: "buzz",   name: "Buzz",   role: "Social",       color: C.buzz,   deskX: 20,  deskY: 160 },
-  { id: "ledger", name: "Ledger", role: "Finance",      color: C.ledger, deskX: 100, deskY: 160 },
+  { id: "eli",    name: "Eli",    role: "Orchestrator", body: "#6c63ff", hair: "#3d2b1f", shirt: "#4a40cc" },
+  { id: "scout",  name: "Scout",  role: "Analytics",    body: "#00b4d8", hair: "#1a3a10", shirt: "#008aaa" },
+  { id: "pen",    name: "Pen",    role: "Content",      body: "#f72585", hair: "#2a1a3a", shirt: "#c01060" },
+  { id: "closer", name: "Closer", role: "Bookings",     body: "#2ec4b6", hair: "#2a1f10", shirt: "#229090" },
+  { id: "buzz",   name: "Buzz",   role: "Social",       body: "#ff9f1c", hair: "#1a0a0a", shirt: "#cc7a00" },
+  { id: "ledger", name: "Ledger", role: "Finance",      body: "#4caf50", hair: "#0a200a", shirt: "#388e3c" },
 ];
 
-// ── Draw functions ─────────────────────────────────────────────────────────
-function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number) {
+// Desk layout — 3 top, 3 bottom row (logical px)
+const DESKS = [
+  { x: 6,   y: 30  },
+  { x: 74,  y: 30  },
+  { x: 142, y: 30  },
+  { x: 6,   y: 88  },
+  { x: 74,  y: 88  },
+  { x: 142, y: 88  },
+];
+
+// ─── Low-level draw ────────────────────────────────────────────────────────
+function dot(ctx: CanvasRenderingContext2D, x: number, y: number, c: string) {
+  ctx.fillStyle = c;
+  ctx.fillRect(x * P, y * P, P, P);
+}
+function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c: string) {
+  ctx.fillStyle = c;
+  ctx.fillRect(x * P, y * P, w * P, h * P);
+}
+function hline(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, c: string) {
+  rect(ctx, x, y, w, 1, c);
+}
+function vline(ctx: CanvasRenderingContext2D, x: number, y: number, h: number, c: string) {
+  rect(ctx, x, y, 1, h, c);
+}
+
+// ─── Scene elements ────────────────────────────────────────────────────────
+function drawBackground(ctx: CanvasRenderingContext2D) {
   // Wall
-  px(ctx, 0, 0, w, h * 0.35, C.wall);
-  // Baseboard
-  px(ctx, 0, h * 0.35, w, 3, C.wallAccent);
-  // Floor tiles
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 14; col++) {
-      const tx = col * (w / 14);
-      const ty = h * 0.35 + row * ((h * 0.65) / 8);
-      const shade = (row + col) % 2 === 0 ? C.floor : C.floorTile;
-      ctx.fillStyle = shade;
-      ctx.fillRect(Math.round(tx), Math.round(ty), Math.round(w / 14) - 1, Math.round((h * 0.65) / 8) - 1);
+  rect(ctx, 0, 0, W, 60, PAL.wall);
+  // Wall stripes
+  for (let y = 5; y < 60; y += 8) hline(ctx, 0, y, W, PAL.wallLine);
+  // Skirting board
+  rect(ctx, 0, 57, W, 2, PAL.skirting);
+  // Floor
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < W; col++) {
+      const shade = (row + col) % 2 === 0 ? PAL.floor : PAL.floorAlt;
+      dot(ctx, col, 59 + row * 8, shade);
+      rect(ctx, col * 1, 59 + row * 8, 1, 8, shade);
     }
   }
+  // Carpet strip (center)
+  rect(ctx, 55, 62, 90, 70, PAL.carpet);
+  // Carpet border
+  hline(ctx, 55, 62, 90, "#3a2a4a");
+  hline(ctx, 55, 131, 90, "#3a2a4a");
+  vline(ctx, 55, 62, 70, "#3a2a4a");
+  vline(ctx, 144, 62, 70, "#3a2a4a");
 }
 
-function drawWindow(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {
+function drawWindow(ctx: CanvasRenderingContext2D, x: number, t: number) {
+  const y = 6;
   // Frame
-  px(ctx, x, y, 50, 40, C.wallAccent);
-  // Glass
-  px(ctx, x + 3, y + 3, 44, 34, C.window);
-  // Sky gradient effect
-  const pulse = Math.sin(t * 0.5) * 10;
-  ctx.fillStyle = `rgba(135,206,235,${0.3 + pulse * 0.01})`;
-  ctx.fillRect(x + 3, y + 3, 44, 16);
-  // Dividers
-  px(ctx, x + 25, y + 3, 2, 34, C.wallAccent);
-  px(ctx, x + 3, y + 21, 44, 2, C.wallAccent);
-  // Light ray
-  ctx.fillStyle = `rgba(255,255,200,${0.08 + Math.sin(t * 0.3) * 0.03})`;
-  ctx.beginPath();
-  ctx.moveTo(x + 3, y + 3);
-  ctx.lineTo(x + 47, y + 3);
-  ctx.lineTo(x + 80, y + 80);
-  ctx.lineTo(x - 30, y + 80);
-  ctx.closePath();
-  ctx.fill();
+  rect(ctx, x, y, 24, 20, PAL.winFrame);
+  // Glass panes
+  rect(ctx, x+1, y+1, 10, 8, PAL.winSky);
+  rect(ctx, x+13, y+1, 10, 8, PAL.winSky);
+  rect(ctx, x+1, y+11, 10, 8, PAL.winSky);
+  rect(ctx, x+13, y+11, 10, 8, PAL.winSky);
+  // Cloud (animated scroll)
+  const cx = ((Math.floor(t * 8) + x * 3) % 12);
+  rect(ctx, x+1+cx, y+2, 3, 1, PAL.winCloud);
+  rect(ctx, x+cx, y+3, 5, 1, PAL.winCloud);
+  rect(ctx, x+1+cx, y+4, 3, 1, PAL.winCloud);
+  // Window glow on floor
+  ctx.fillStyle = `rgba(0,100,180,${0.06 + Math.sin(t*0.5)*0.02})`;
+  ctx.fillRect((x+2)*P, 59*P, 20*P, 60*P);
 }
 
-function drawDesk(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  // Legs
-  px(ctx, x + 2,  y + 20, 4, 12, C.desk);
-  px(ctx, x + 54, y + 20, 4, 12, C.desk);
-  // Surface
-  px(ctx, x, y + 16, 60, 6, C.deskTop);
-  // Desk body
-  px(ctx, x + 2, y + 18, 56, 4, C.desk);
-}
-
-function drawMonitor(ctx: CanvasRenderingContext2D, x: number, y: number, agentColor: string, t: number) {
-  // Stand
-  px(ctx, x + 22, y + 10, 4, 6, C.chair);
-  px(ctx, x + 18, y + 14, 12, 2, C.chair);
-  // Frame
-  px(ctx, x + 8,  y - 2,  32, 14, C.monitor);
-  // Screen
-  px(ctx, x + 10, y,      28, 10, C.monitorGlow);
-  // Screen content — scrolling lines
-  const scroll = Math.floor(t * 2) % 10;
-  ctx.fillStyle = agentColor;
-  for (let i = 0; i < 3; i++) {
-    const lineY = y + 1 + ((i * 3 + scroll) % 9);
-    if (lineY < y + 9) {
-      ctx.fillRect(x + 12, lineY, 10 + (i * 4), 1);
-    }
-  }
-  // Screen glow
-  ctx.fillStyle = `rgba(0,212,255,${0.15 + Math.sin(t + x) * 0.05})`;
-  ctx.fillRect(x + 10, y, 28, 10);
+function drawLamp(ctx: CanvasRenderingContext2D, x: number, t: number) {
+  // Pole
+  vline(ctx, x, 10, 45, "#3a3a5a");
+  // Shade
+  rect(ctx, x-3, 8, 7, 3, "#4a4a1a");
+  // Bulb
+  dot(ctx, x, 10, PAL.lampGlow);
+  // Glow
+  ctx.fillStyle = `rgba(255,255,100,${0.06 + Math.sin(t*0.7)*0.02})`;
+  ctx.fillRect((x-8)*P, 10*P, 17*P, 50*P);
 }
 
 function drawPlant(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {
   // Pot
-  px(ctx, x + 4, y + 12, 12, 8, C.plantPot);
-  px(ctx, x + 2, y + 10, 16, 4, "#a0522d");
+  rect(ctx, x+1, y+6, 6, 5, PAL.pot);
+  hline(ctx, x, y+6, 8, PAL.potRim);
   // Stem
-  px(ctx, x + 9, y + 6, 2, 6, "#4a7c3f");
-  // Leaves — sway
-  const sway = Math.sin(t * 0.7) * 1.5;
-  ctx.fillStyle = C.plant;
-  ctx.fillRect(Math.round(x + 2 + sway), y + 2, 8, 6);
-  ctx.fillRect(Math.round(x + 10 - sway), y, 8, 7);
-  ctx.fillRect(Math.round(x + 5), y + 4, 10, 4);
+  vline(ctx, x+3, y+1, 6, "#2d5a20");
+  // Leaves sway
+  const s = Math.sin(t * 0.6) > 0 ? 1 : 0;
+  rect(ctx, x-1+s, y, 4, 3, PAL.plant2);
+  rect(ctx, x+3-s, y-1, 4, 3, PAL.plant1);
+  rect(ctx, x+1, y+2, 5, 2, PAL.plant2);
+}
+
+function drawDesk(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Legs
+  vline(ctx, x+1,  y+14, 8, PAL.deskFace);
+  vline(ctx, x+22, y+14, 8, PAL.deskFace);
+  // Desk body (side)
+  rect(ctx, x, y+10, 24, 5, PAL.deskFace);
+  // Desktop surface
+  rect(ctx, x-1, y+8, 26, 3, PAL.deskTop);
+  // Desktop shine
+  hline(ctx, x, y+8, 24, "#a06858");
 }
 
 function drawChair(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  // Seat
-  px(ctx, x + 8, y + 28, 24, 4, C.chair);
   // Back
-  px(ctx, x + 8, y + 16, 24, 14, C.chair);
+  rect(ctx, x+6, y+18, 12, 10, PAL.chair);
+  hline(ctx, x+6, y+18, 12, PAL.chairSeat);
+  // Seat
+  rect(ctx, x+5, y+26, 14, 4, PAL.chairSeat);
   // Legs
-  px(ctx, x + 8,  y + 30, 3, 6, "#1a1a2e");
-  px(ctx, x + 29, y + 30, 3, 6, "#1a1a2e");
-  px(ctx, x + 16, y + 30, 3, 6, "#1a1a2e");
+  vline(ctx, x+6,  y+29, 5, "#0a1a22");
+  vline(ctx, x+17, y+29, 5, "#0a1a22");
 }
 
-function drawAgent(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, t: number, working: boolean) {
-  // bobbing animation when working
-  const bob = working ? Math.sin(t * 3) * 1.5 : 0;
+function drawMonitor(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  agentColor: string,
+  t: number,
+  working: boolean
+) {
+  // Stand
+  rect(ctx, x+8, y+6, 4, 4, "#2a2a3a");
+  hline(ctx, x+5, y+9, 10, "#1a1a2a");
+  // Bezel
+  rect(ctx, x+1, y-4, 18, 12, PAL.monBorder);
+  // Screen
+  rect(ctx, x+2, y-3, 16, 10, PAL.monGlow);
+  // Screen content
+  if (working) {
+    const scroll = Math.floor(t * 3) % 8;
+    ctx.fillStyle = agentColor;
+    // Animated "code" lines
+    for (let i = 0; i < 3; i++) {
+      const lineY = y - 2 + ((i * 3 + scroll) % 9);
+      if (lineY >= y-3 && lineY < y+7) {
+        const w2 = 4 + (i % 3) * 3;
+        rect(ctx, x+3, lineY, w2, 1, agentColor);
+        if (i % 2 === 0) rect(ctx, x+3+w2+1, lineY, 3, 1, "#334455");
+      }
+    }
+    // Cursor blink
+    if (Math.floor(t * 2) % 2 === 0) {
+      dot(ctx, x+3, y+5, PAL.white);
+    }
+  } else {
+    // Screensaver — slow pulse
+    const alpha = 0.3 + Math.sin(t * 0.5) * 0.2;
+    ctx.fillStyle = `rgba(${parseInt(agentColor.slice(1,3),16)},${parseInt(agentColor.slice(3,5),16)},${parseInt(agentColor.slice(5,7),16)},${alpha})`;
+    ctx.fillRect((x+4)*P, (y)*P, 12*P, 5*P);
+  }
+  // Screen glow
+  ctx.fillStyle = `rgba(${parseInt(agentColor.slice(1,3),16)},${parseInt(agentColor.slice(3,5),16)},${parseInt(agentColor.slice(5,7),16)},0.08)`;
+  ctx.fillRect((x-2)*P, (y-6)*P, 24*P, 20*P);
+}
+
+function drawAgent(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  agent: typeof AGENTS[0],
+  t: number,
+  working: boolean
+) {
+  const bob = working ? Math.round(Math.sin(t * 3.5) * 0.6) : 0;
   const ay = y + bob;
 
-  // Body
-  px(ctx, x + 10, ay + 8, 12, 14, color);
-  // Head
-  px(ctx, x + 11, ay + 1, 10, 9, C.skin);
-  // Hair
-  px(ctx, x + 11, ay + 1, 10, 3, C.hair);
-  // Eyes
-  px(ctx, x + 13, ay + 5, 2, 2, "#1a1a2e");
-  px(ctx, x + 18, ay + 5, 2, 2, "#1a1a2e");
-  // Mouth — smile when working
-  if (working) {
-    px(ctx, x + 14, ay + 8, 4, 1, "#8b4513");
-    px(ctx, x + 13, ay + 7, 1, 1, "#8b4513");
-    px(ctx, x + 18, ay + 7, 1, 1, "#8b4513");
-  }
-  // Arms typing
-  if (working) {
-    const armSwing = Math.sin(t * 4) * 2;
-    px(ctx, x + 7,  Math.round(ay + 12 + armSwing), 4, 3, C.skin);
-    px(ctx, x + 21, Math.round(ay + 12 - armSwing), 4, 3, C.skin);
-  } else {
-    px(ctx, x + 7,  ay + 12, 4, 3, C.skin);
-    px(ctx, x + 21, ay + 12, 4, 3, C.skin);
-  }
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillRect((x+3)*P, (ay+18)*P, 10*P, 2*P);
+
   // Legs
-  px(ctx, x + 12, ay + 20, 4, 6, "#2d2d44");
-  px(ctx, x + 17, ay + 20, 4, 6, "#2d2d44");
+  rect(ctx, x+3, ay+14, 3, 5, "#1a1a3a");
+  rect(ctx, x+7, ay+14, 3, 5, "#1a1a3a");
+  // Shoes
+  rect(ctx, x+2, ay+18, 4, 2, "#111118");
+  rect(ctx, x+6, ay+18, 4, 2, "#111118");
+
+  // Body / shirt
+  rect(ctx, x+2, ay+8, 9, 7, agent.shirt);
+  // Collar
+  hline(ctx, x+4, ay+8, 5, "#ffffff22");
+
+  // Arms
+  if (working) {
+    const swing = Math.sin(t * 4) > 0 ? 1 : -1;
+    rect(ctx, x,   ay+9+swing, 3, 4, "#ffdbac");
+    rect(ctx, x+10,ay+9-swing, 3, 4, "#ffdbac");
+  } else {
+    rect(ctx, x,   ay+10, 3, 4, "#ffdbac");
+    rect(ctx, x+10,ay+10, 3, 4, "#ffdbac");
+  }
+
+  // Neck
+  rect(ctx, x+5, ay+6, 3, 3, "#ffdbac");
+  // Head
+  rect(ctx, x+3, ay, 7, 7, "#ffdbac");
+  // Hair
+  rect(ctx, x+3, ay, 7, 2, agent.hair);
+  dot(ctx, x+3, ay+2, agent.hair);
+  dot(ctx, x+9, ay+2, agent.hair);
+  // Eyes
+  dot(ctx, x+5, ay+3, PAL.black);
+  dot(ctx, x+7, ay+3, PAL.black);
+  // Mouth
+  if (working) {
+    dot(ctx, x+5, ay+5, "#8b4513");
+    dot(ctx, x+7, ay+5, "#8b4513");
+  } else {
+    hline(ctx, x+5, ay+5, 2, "#8b4513");
+  }
 }
 
-function drawWorkstation(ctx: CanvasRenderingContext2D, agent: typeof AGENTS[0], t: number, working: boolean) {
-  const { deskX: x, deskY: y, color } = agent;
-  drawChair(ctx, x, y);
-  drawDesk(ctx, x, y + 16);
-  drawMonitor(ctx, x + 6, y + 4, color, t);
-  drawAgent(ctx, x + 10, y - 12, color, t, working);
-  // Name tag
-  ctx.fillStyle = `rgba(0,0,0,0.5)`;
-  ctx.fillRect(x + 4, y - 16, 50, 10);
-  ctx.fillStyle = color;
-  ctx.font = "bold 7px monospace";
-  ctx.fillText(agent.name, x + 7, y - 8);
-}
-
-// ── Main component ─────────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────────────────
 export default function PixelOffice() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef   = useRef<number>(0);
   const tRef      = useRef(0);
-  const [activeAgent, setActiveAgent] = useState<string | null>(null);
-
-  // Which agents are "working" (cycling)
+  const [hovered, setHovered] = useState<string | null>(null);
   const workingRef = useRef<Record<string, boolean>>({
     eli: true, scout: true, pen: false, closer: true, buzz: false, ledger: true,
   });
 
-  useEffect(() => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.imageSmoothingEnabled = false;
+    tRef.current += 0.04;
+    const t = tRef.current;
 
-    function draw() {
-      if (!canvas || !ctx) return;
-      const W = canvas.width;
-      const H = canvas.height;
-      tRef.current += 0.035;
-      const t = tRef.current;
+    // Background
+    ctx.clearRect(0, 0, W * P, H * P);
+    drawBackground(ctx);
 
-      // cycle working states randomly
-      if (Math.floor(t * 10) % 80 === 0) {
-        const id = AGENTS[Math.floor(Math.random() * AGENTS.length)].id;
-        workingRef.current[id] = !workingRef.current[id];
+    // Windows
+    drawWindow(ctx, 10, t);
+    drawWindow(ctx, 88, t);
+    drawWindow(ctx, 166, t);
+
+    // Floor lamps
+    drawLamp(ctx, 50, t);
+    drawLamp(ctx, 150, t);
+
+    // Corner plants
+    drawPlant(ctx, 0, 118, t);
+    drawPlant(ctx, 191, 118, t);
+    drawPlant(ctx, 0, 58, t);
+    drawPlant(ctx, 191, 58, t);
+
+    // Workstations
+    AGENTS.forEach((agent, i) => {
+      const d = DESKS[i];
+      const working = workingRef.current[agent.id] ?? true;
+
+      drawChair(ctx, d.x, d.y);
+      drawDesk(ctx, d.x, d.y);
+      drawMonitor(ctx, d.x + 3, d.y + 2, agent.body, t, working);
+      drawAgent(ctx, d.x + 5, d.y - 20, agent, t, working);
+
+      // Name tag above head
+      const isHov = hovered === agent.id;
+      if (isHov) {
+        rect(ctx, d.x + 1, d.y - 26, 20, 6, "#000018");
+        ctx.fillStyle = agent.body;
+        ctx.font = `bold ${P * 2}px monospace`;
+        ctx.fillText(agent.name, (d.x + 2) * P, (d.y - 21) * P);
       }
 
-      // Background
-      ctx.clearRect(0, 0, W, H);
-      drawFloor(ctx, W, H);
+      // Status dot
+      const dotColor = working ? "#44ff88" : "#888899";
+      dot(ctx, d.x + 22, d.y - 20, dotColor);
+    });
 
-      // Windows on wall
-      drawWindow(ctx, 60,  10, t);
-      drawWindow(ctx, 200, 10, t);
-      drawWindow(ctx, 330, 10, t);
-
-      // Corner plant
-      drawPlant(ctx, W - 30, 100, t);
-      drawPlant(ctx, 2, 100, t);
-
-      // All workstations
-      AGENTS.forEach(agent => {
-        drawWorkstation(ctx, agent, t, workingRef.current[agent.id] ?? true);
-      });
-
-      // Highlight hovered agent
-      if (activeAgent) {
-        const agent = AGENTS.find(a => a.id === activeAgent);
-        if (agent) {
-          ctx.strokeStyle = agent.color;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(agent.deskX - 2, agent.deskY - 18, 64, 58);
-          // Tooltip
-          ctx.fillStyle = "rgba(0,0,0,0.85)";
-          ctx.fillRect(agent.deskX, agent.deskY - 34, 62, 14);
-          ctx.fillStyle = agent.color;
-          ctx.font = "bold 7px monospace";
-          ctx.fillText(`${agent.name} · ${agent.role}`, agent.deskX + 3, agent.deskY - 23);
-        }
+    // Highlight box for hovered agent
+    if (hovered) {
+      const idx = AGENTS.findIndex(a => a.id === hovered);
+      if (idx >= 0) {
+        const d = DESKS[idx];
+        const ag = AGENTS[idx];
+        ctx.strokeStyle = ag.body;
+        ctx.lineWidth = P * 0.8;
+        ctx.setLineDash([P * 2, P]);
+        ctx.strokeRect((d.x - 2) * P, (d.y - 22) * P, 30 * P, 52 * P);
+        ctx.setLineDash([]);
       }
-
-      // Status bar bottom
-      ctx.fillStyle = "rgba(10,10,20,0.7)";
-      ctx.fillRect(0, H - 18, W, 18);
-      ctx.fillStyle = C.glow;
-      ctx.font = "7px monospace";
-      ctx.fillText("WIRO 4x4 — Eli HQ", 8, H - 6);
-      const working = Object.values(workingRef.current).filter(Boolean).length;
-      ctx.fillStyle = C.accent;
-      ctx.fillText(`${working}/${AGENTS.length} agents active`, W - 110, H - 6);
-
-      animRef.current = requestAnimationFrame(draw);
     }
+
+    // Bottom HUD
+    rect(ctx, 0, H - 8, W, 8, "#08081a");
+    hline(ctx, 0, H - 8, W, "#2a2a5a");
+    ctx.fillStyle = "#6c63ff";
+    ctx.font = `bold ${P * 1.5}px monospace`;
+    ctx.fillText("WIRO 4x4  Eli HQ", 3 * P, (H - 2) * P);
+    const active = Object.values(workingRef.current).filter(Boolean).length;
+    ctx.fillStyle = active >= 4 ? "#44ff88" : "#ffaa44";
+    ctx.fillText(`${active}/${AGENTS.length} online`, (W - 28) * P, (H - 2) * P);
 
     animRef.current = requestAnimationFrame(draw);
+  }, [hovered]);
+
+  useEffect(() => {
+    animRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animRef.current);
-  }, [activeAgent]);
+  }, [draw]);
 
-  // Mouse hover → highlight agent
-  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const scaleX = e.currentTarget.width / rect.width;
-    const scaleY = e.currentTarget.height / rect.height;
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
-
-    const hit = AGENTS.find(a =>
-      mx >= a.deskX - 2 && mx <= a.deskX + 62 &&
-      my >= a.deskY - 18 && my <= a.deskY + 40
-    );
-    setActiveAgent(hit?.id ?? null);
-  }
-
-  // Click → toggle working
-  function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const scaleX = e.currentTarget.width / rect.width;
-    const scaleY = e.currentTarget.height / rect.height;
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
-
-    const hit = AGENTS.find(a =>
-      mx >= a.deskX - 2 && mx <= a.deskX + 62 &&
-      my >= a.deskY - 18 && my <= a.deskY + 40
-    );
-    if (hit) {
-      workingRef.current[hit.id] = !workingRef.current[hit.id];
-    }
+  function getAgentAt(e: React.MouseEvent<HTMLCanvasElement>) {
+    const rect2 = e.currentTarget.getBoundingClientRect();
+    const scaleX = (W * P) / rect2.width;
+    const scaleY = (H * P) / rect2.height;
+    const mx = (e.clientX - rect2.left) * scaleX / P;
+    const my = (e.clientY - rect2.top)  * scaleY / P;
+    return AGENTS.find((_, i) => {
+      const d = DESKS[i];
+      return mx >= d.x - 2 && mx <= d.x + 28 && my >= d.y - 22 && my <= d.y + 30;
+    });
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-foreground">🏢 Eli HQ — Pixel Office</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Hover over a desk to inspect · Click to toggle working state</p>
+    <div className="space-y-4">
+      {/* Canvas card */}
+      <div className="rounded-2xl overflow-hidden border border-[#2a2a5a] bg-[#08081a] shadow-2xl shadow-black/60">
+        {/* Header bar */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-[#1a1a3a]">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#6c63ff] tracking-widest uppercase">🏢 Eli HQ</span>
+            <span className="text-[10px] text-[#4a4a7a]">— Pixel Office v2</span>
           </div>
-          <div className="flex gap-2 flex-wrap justify-end">
-            {AGENTS.map(a => (
-              <span key={a.id} className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="w-2 h-2 rounded-full inline-block" style={{ background: a.color }} />
-                {a.name}
-              </span>
-            ))}
+          <div className="flex gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
           </div>
         </div>
-        <div className="p-4 flex justify-center bg-[#0a0a14]">
-          <canvas
-            ref={canvasRef}
-            width={380}
-            height={260}
-            className="w-full max-w-[760px] rounded-lg cursor-crosshair"
-            style={{ imageRendering: "pixelated" }}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setActiveAgent(null)}
-            onClick={handleClick}
-          />
+
+        {/* Canvas */}
+        <canvas
+          ref={canvasRef}
+          width={W * P}
+          height={H * P}
+          className="w-full cursor-crosshair block"
+          style={{ imageRendering: "pixelated", maxHeight: "420px" }}
+          onMouseMove={e => setHovered(getAgentAt(e)?.id ?? null)}
+          onMouseLeave={() => setHovered(null)}
+          onClick={e => {
+            const ag = getAgentAt(e);
+            if (ag) workingRef.current[ag.id] = !workingRef.current[ag.id];
+          }}
+        />
+
+        {/* Hint bar */}
+        <div className="px-4 py-1.5 border-t border-[#1a1a3a] flex items-center gap-4">
+          <span className="text-[10px] text-[#4a4a7a]">🖱 Hover = inspect</span>
+          <span className="text-[10px] text-[#4a4a7a]">🖱 Click = toggle working</span>
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-[#44ff88]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#44ff88] animate-pulse" />
+            LIVE
+          </span>
         </div>
       </div>
 
-      {/* Agent legend */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {AGENTS.map(agent => (
-          <div
-            key={agent.id}
-            className="bg-card border border-border rounded-lg px-3 py-2 flex items-center gap-3"
-            style={{ borderLeftColor: agent.color, borderLeftWidth: 3 }}
-          >
-            <div className="w-3 h-3 rounded-full shrink-0" style={{ background: agent.color }} />
-            <div>
-              <div className="text-xs font-bold text-foreground">{agent.name}</div>
-              <div className="text-[10px] text-muted-foreground">{agent.role}</div>
-            </div>
-            <div className="ml-auto">
-              <span
-                className="text-[9px] font-medium px-1.5 py-0.5 rounded-full"
-                style={{
-                  background: `${agent.color}22`,
-                  color: agent.color,
-                }}
-              >
-                {workingRef?.current?.[agent.id] ? "active" : "idle"}
-              </span>
-            </div>
-          </div>
-        ))}
+      {/* Agent legend grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {AGENTS.map(agent => {
+          const working = workingRef.current[agent.id];
+          return (
+            <button
+              key={agent.id}
+              onClick={() => { workingRef.current[agent.id] = !workingRef.current[agent.id]; }}
+              className="group flex items-center gap-2 px-3 py-2 rounded-xl border transition-all cursor-pointer text-left"
+              style={{
+                background: `${agent.body}12`,
+                borderColor: hovered === agent.id ? agent.body : `${agent.body}33`,
+              }}
+            >
+              {/* Avatar dot */}
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-sm"
+                style={{ background: `${agent.body}30` }}>
+                <span style={{ color: agent.body }}>●</span>
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold leading-none mb-0.5" style={{ color: agent.body }}>
+                  {agent.name}
+                </div>
+                <div className="text-[10px] text-muted-foreground truncate">{agent.role}</div>
+              </div>
+              <div className="ml-auto shrink-0">
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
+                  working
+                    ? "bg-green-500/20 text-green-400"
+                    : "bg-gray-500/20 text-gray-500"
+                }`}>
+                  {working ? "ON" : "IDLE"}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

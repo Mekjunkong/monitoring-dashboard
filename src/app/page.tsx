@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Activity, Wifi, Cpu, CalendarClock, BookOpen, Kanban as KanbanIcon, Menu, X, ChevronDown, ChevronUp, Bot, Sun, Moon, Building2 } from "lucide-react";
+import { useState } from "react";
+import { Activity, Wifi, Cpu, CalendarClock, BookOpen, Kanban as KanbanIcon, Menu, X, Bot, Sun, Moon, Building2 } from "lucide-react";
 import RefreshTimer from "@/components/RefreshTimer";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import AgentStatusPanel from "@/components/AgentStatusPanel";
@@ -16,22 +16,22 @@ const PixelOffice = dynamic(() => import("@/components/PixelOffice"), { ssr: fal
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
 
-type Tab = "kanban" | "gateway" | "model" | "cron" | "skills" | "health" | "office";
+type Tab = "agents" | "kanban" | "gateway" | "model" | "cron" | "skills" | "health" | "office";
 
-const tabs: { id: Tab; label: string; icon: React.ElementType; shortLabel: string }[] = [
-  { id: "kanban", label: "Kanban Board", shortLabel: "Kanban", icon: KanbanIcon },
-  { id: "gateway", label: "Gateway Status", shortLabel: "Gateway", icon: Wifi },
-  { id: "model", label: "Model Usage", shortLabel: "Model", icon: Cpu },
-  { id: "cron", label: "Cron Jobs", shortLabel: "Cron", icon: CalendarClock },
-  { id: "skills", label: "Skill Logs", shortLabel: "Logs", icon: BookOpen },
-  { id: "health", label: "System Health", shortLabel: "Health", icon: Activity },
-  { id: "office", label: "Pixel Office", shortLabel: "Office", icon: Building2 },
+const tabs: { id: Tab; label: string; icon: React.ElementType; shortLabel: string; desc: string }[] = [
+  { id: "office",  label: "Pixel Office",   shortLabel: "Office",  icon: Building2,     desc: "Live pixel art office — watch your agents work" },
+  { id: "agents",  label: "Agent Status",   shortLabel: "Agents",  icon: Bot,           desc: "Live status of all 8 agents and their tasks" },
+  { id: "kanban",  label: "Kanban Board",   shortLabel: "Kanban",  icon: KanbanIcon,    desc: "Drag & drop task management across all projects" },
+  { id: "gateway", label: "Gateway Status", shortLabel: "Gateway", icon: Wifi,          desc: "Real-time OpenClaw gateway health & metrics" },
+  { id: "model",   label: "Model Usage",    shortLabel: "Model",   icon: Cpu,           desc: "Claude model token usage, cost, and trends" },
+  { id: "cron",    label: "Cron Jobs",      shortLabel: "Cron",    icon: CalendarClock, desc: "Scheduled job status and execution history" },
+  { id: "skills",  label: "Skill Logs",     shortLabel: "Logs",    icon: BookOpen,      desc: "Agent skill activity log — last 20 entries" },
+  { id: "health",  label: "System Health",  shortLabel: "Health",  icon: Activity,      desc: "Overall system health score and active alerts" },
 ];
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("kanban");
+  const [activeTab, setActiveTab] = useState<Tab>("office");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [agentPanelOpen, setAgentPanelOpen] = useState(true);
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
 
@@ -42,10 +42,6 @@ export default function DashboardPage() {
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
-    const tabConfig = tabs.find((t) => t.id === tab);
-    if (tabConfig) {
-      showToast(`Switched to ${tabConfig.label}`, "info");
-    }
     setMobileMenuOpen(false);
   };
 
@@ -69,7 +65,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Desktop tabs — scrollable horizontal strip */}
+            {/* Desktop tabs */}
             <div className="hidden md:flex items-center gap-1 flex-1 overflow-x-auto scrollbar-hide">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -90,10 +86,8 @@ export default function DashboardPage() {
               })}
             </div>
 
-            {/* Spacer */}
             <div className="flex-1 md:hidden" />
 
-            {/* Refresh timer */}
             <RefreshTimer
               countdown={countdown}
               isPaused={isPaused}
@@ -103,7 +97,6 @@ export default function DashboardPage() {
               onManualRefresh={manualRefresh}
             />
 
-            {/* Dark mode toggle */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -112,7 +105,6 @@ export default function DashboardPage() {
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 rounded-lg hover:bg-muted text-muted-foreground"
@@ -121,7 +113,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Mobile tab menu — scrolls horizontally, doesn't wrap */}
+          {/* Mobile tab menu */}
           {mobileMenuOpen && (
             <div className="md:hidden mt-2 pb-2 flex gap-1 overflow-x-auto">
               {tabs.map((tab) => {
@@ -154,47 +146,23 @@ export default function DashboardPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">{activeTabConfig.label}</h1>
-            <p className="text-sm text-muted-foreground">
-              {activeTab === "kanban" && "Drag & drop task management across all projects"}
-              {activeTab === "gateway" && "Real-time OpenClaw gateway health & metrics"}
-              {activeTab === "model" && "Claude model token usage, cost, and trends"}
-              {activeTab === "cron" && "Scheduled job status and execution history"}
-              {activeTab === "skills" && "Agent skill activity log — last 20 entries"}
-              {activeTab === "health" && "Overall system health score and active alerts"}
-              {activeTab === "office" && "Live pixel art office — watch your agents work in real time"}
-            </p>
+            <p className="text-sm text-muted-foreground">{activeTabConfig.desc}</p>
           </div>
         </div>
       </div>
 
-      {/* Agent Status Panel */}
-      <section className="max-w-screen-2xl mx-auto px-4 pt-4">
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <button
-            onClick={() => setAgentPanelOpen(!agentPanelOpen)}
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Bot size={16} className="text-primary" />
-              <span className="text-sm font-semibold text-foreground">Agent Status</span>
-              <span className="text-xs text-muted-foreground">— 8 agents</span>
-            </div>
-            {agentPanelOpen ? (
-              <ChevronUp size={16} className="text-muted-foreground" />
-            ) : (
-              <ChevronDown size={16} className="text-muted-foreground" />
-            )}
-          </button>
-          {agentPanelOpen && (
-            <div className="px-4 pb-4">
-              <AgentStatusPanel />
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Main content — key prop forces re-mount on tab change (Bug 1 fix) */}
+      {/* Main content */}
       <main className="max-w-screen-2xl mx-auto px-4 py-4" key={activeTab}>
+        {activeTab === "office" && (
+          <div className="max-w-2xl">
+            <PixelOffice />
+          </div>
+        )}
+
+        {activeTab === "agents" && (
+          <AgentStatusPanel />
+        )}
+
         {activeTab === "kanban" && (
           <Kanban />
         )}
@@ -226,12 +194,6 @@ export default function DashboardPage() {
         {activeTab === "health" && (
           <div className="max-w-md">
             <SystemHealth />
-          </div>
-        )}
-
-        {activeTab === "office" && (
-          <div className="max-w-2xl">
-            <PixelOffice />
           </div>
         )}
       </main>
