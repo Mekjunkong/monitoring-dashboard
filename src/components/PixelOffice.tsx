@@ -633,11 +633,26 @@ export default function PixelOffice() {
   const workingRef = useRef<Record<string, boolean>>({
     eli: true, scout: true, pen: false, closer: true, buzz: false, ledger: true,
   });
-
-  // Rotate activity messages every ~3s per agent
   const activityIdxRef = useRef<Record<string, number>>(
     Object.fromEntries(AGENTS.map((a, i) => [a.id, i % a.activities.length]))
   );
+
+  // React state synced from refs for HTML panel
+  const [uiWorking, setUiWorking] = useState({ ...workingRef.current });
+  const [uiActivity, setUiActivity] = useState({ ...activityIdxRef.current });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setUiWorking({ ...workingRef.current });
+      setUiActivity({ ...activityIdxRef.current });
+    }, 800);
+    return () => clearInterval(id);
+  }, []);
+
+  function toggleAgent(id: string) {
+    workingRef.current[id] = !workingRef.current[id];
+    setUiWorking({ ...workingRef.current });
+  }
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -791,10 +806,7 @@ export default function PixelOffice() {
           style={{ imageRendering: "pixelated" }}
           onMouseMove={e => setHovered(getAgentAt(e)?.id ?? null)}
           onMouseLeave={() => setHovered(null)}
-          onClick={e => {
-            const ag = getAgentAt(e);
-            if (ag) workingRef.current[ag.id] = !workingRef.current[ag.id];
-          }}
+          onClick={e => { const ag = getAgentAt(e); if (ag) toggleAgent(ag.id); }}
         />
 
         {/* Hint bar */}
@@ -804,42 +816,54 @@ export default function PixelOffice() {
         </div>
       </div>
 
-      {/* Agent cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {AGENTS.map(agent => {
-          const working = workingRef.current[agent.id];
-          const isHov = hovered === agent.id;
-          return (
-            <button
-              key={agent.id}
-              onClick={() => { workingRef.current[agent.id] = !workingRef.current[agent.id]; }}
-              onMouseEnter={() => setHovered(agent.id)}
-              onMouseLeave={() => setHovered(null)}
-              className="group flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-left"
-              style={{
-                background: isHov ? `${agent.color}20` : `${agent.color}0c`,
-                borderColor: isHov ? agent.color : `${agent.color}30`,
-                boxShadow: isHov ? `0 0 12px ${agent.color}33` : "none",
-              }}
-            >
-              <div className="text-xl leading-none">{agent.opEmoji}</div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold leading-none" style={{ color: agent.color }}>
-                    {agent.name}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground font-mono">({agent.opChar})</span>
+      {/* ── Crew Activity Feed ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <span className="text-base">🏴‍☠️</span>
+          <h3 className="text-sm font-bold text-foreground">Crew Activity</h3>
+          <span className="ml-auto text-[10px] text-muted-foreground/50 font-mono">updates every ~4s</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {AGENTS.map(agent => {
+            const isWorking = uiWorking[agent.id];
+            const isHov = hovered === agent.id;
+            const msg = agent.activities[uiActivity[agent.id] ?? 0];
+            return (
+              <button
+                key={agent.id}
+                onClick={() => toggleAgent(agent.id)}
+                onMouseEnter={() => setHovered(agent.id)}
+                onMouseLeave={() => setHovered(null)}
+                className="flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all duration-200"
+                style={{
+                  background: isHov ? `${agent.color}18` : `${agent.color}08`,
+                  borderColor: isHov ? `${agent.color}88` : `${agent.color}25`,
+                  boxShadow: isHov ? `0 0 16px ${agent.color}22` : "none",
+                }}
+              >
+                <div className="text-3xl leading-none mt-0.5 select-none">{agent.opEmoji}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-bold" style={{ color: agent.color }}>{agent.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">as {agent.opChar}</span>
+                    <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isWorking ? "bg-green-500/15 text-green-400" : "bg-gray-500/15 text-gray-500"
+                    }`}>
+                      {isWorking ? "● ON" : "○ IDLE"}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mb-2">{agent.role}</div>
+                  <div
+                    className="text-sm font-medium leading-snug"
+                    style={{ color: isWorking ? agent.color : "#666677" }}
+                  >
+                    {isWorking ? msg : "💤 Idle — awaiting orders"}
+                  </div>
                 </div>
-                <div className="text-[9px] text-muted-foreground mt-0.5 truncate">{agent.role}</div>
-              </div>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                working ? "bg-green-500/20 text-green-400" : "bg-gray-500/15 text-gray-500"
-              }`}>
-                {working ? "ON" : "IDLE"}
-              </span>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
