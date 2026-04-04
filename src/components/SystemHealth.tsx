@@ -1,10 +1,11 @@
 "use client";
 
+import { type ElementType } from "react";
 import { AlertTriangle, Info, CheckCircle, Activity } from "lucide-react";
 import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from "recharts";
 import { systemHealth } from "@/data/mockData";
 
-const alertLevelConfig: Record<string, { icon: React.ElementType; color: string; bg: string; border: string }> = {
+const alertLevelConfig: Record<string, { icon: ElementType; color: string; bg: string; border: string }> = {
   critical: { icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/30" },
   warning: { icon: AlertTriangle, color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/30" },
   info: { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30" },
@@ -45,13 +46,12 @@ function HealthGauge({ score }: { score: number }) {
           data={data}
           barSize={16}
         >
-          <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
           <RadialBar
             dataKey="value"
             cornerRadius={8}
             fill={color}
             background={{ fill: "hsl(217 33% 17%)" }}
-            angleAxisId={0}
           />
         </RadialBarChart>
       </ResponsiveContainer>

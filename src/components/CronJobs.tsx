@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ElementType } from "react";
 import { CheckCircle, XCircle, Loader, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { cronJobs, CronStatus } from "@/data/mockData";
 
-const statusConfig: Record<CronStatus, { icon: React.ElementType; color: string; bg: string; label: string }> = {
+const statusConfig: Record<CronStatus, { icon: ElementType; color: string; bg: string; label: string }> = {
   success: { icon: CheckCircle, color: "text-green-400", bg: "bg-green-500/10", label: "Success" },
   failed: { icon: XCircle, color: "text-red-400", bg: "bg-red-500/10", label: "Failed" },
   running: { icon: Loader, color: "text-blue-400", bg: "bg-blue-500/10", label: "Running" },

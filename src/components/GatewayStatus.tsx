@@ -1,8 +1,17 @@
 "use client";
 
-import { Wifi, WifiOff, AlertTriangle, Clock, Zap, MessageSquare, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Wifi, WifiOff, AlertTriangle, Clock, Zap, MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { gatewayStatus } from "@/data/mockData";
+import { gatewayStatus as mockGatewayStatus } from "@/data/mockData";
+
+type GatewayStatusType = "online" | "offline" | "degraded";
+
+interface LiveGatewayData {
+  status: GatewayStatusType;
+  latency: number | null;
+  checkedAt: string;
+}
 
 const statusConfig = {
   online: { icon: Wifi, label: "Online", color: "text-green-400", bg: "bg-green-500/20", border: "border-green-500/30", dot: "bg-green-400" },
@@ -17,7 +26,34 @@ const severityColors: Record<string, string> = {
 };
 
 export default function GatewayStatus() {
-  const cfg = statusConfig[gatewayStatus.status];
+  const [liveData, setLiveData] = useState<LiveGatewayData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchGateway = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/gateway");
+      const data: LiveGatewayData = await res.json();
+      setLiveData(data);
+    } catch {
+      setLiveData({ status: "offline", latency: null, checkedAt: new Date().toISOString() });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGateway();
+    const interval = setInterval(fetchGateway, 15000); // refresh every 15s
+    return () => clearInterval(interval);
+  }, []);
+
+  // Use live status if available, fall back to mock for other metrics
+  const gatewayStatus = mockGatewayStatus;
+  const liveStatus: GatewayStatusType = liveData?.status ?? gatewayStatus.status;
+  const responseTime = liveData?.latency ?? gatewayStatus.responseTime;
+
+  const cfg = statusConfig[liveStatus];
   const StatusIcon = cfg.icon;
 
   return (
@@ -31,13 +67,28 @@ export default function GatewayStatus() {
         <div className="flex-1">
           <div className={`text-lg font-bold ${cfg.color}`}>{cfg.label}</div>
           <div className="text-xs text-muted-foreground">
-            Last checked: {new Date(gatewayStatus.lastCheck).toLocaleTimeString()}
+            {loading ? (
+              <span className="flex items-center gap-1">
+                <RefreshCw size={10} className="animate-spin" /> Checking gateway...
+              </span>
+            ) : (
+              <>Last checked: {liveData ? new Date(liveData.checkedAt).toLocaleTimeString() : new Date(gatewayStatus.lastCheck).toLocaleTimeString()}</>
+            )}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-foreground">{gatewayStatus.responseTime}ms</div>
+          <div className="text-2xl font-bold text-foreground">
+            {responseTime !== null ? `${responseTime}ms` : "—"}
+          </div>
           <div className="text-xs text-muted-foreground">Response time</div>
         </div>
+        <button
+          onClick={fetchGateway}
+          className="p-2 rounded-lg hover:bg-black/10 transition-colors"
+          title="Refresh gateway status"
+        >
+          <RefreshCw size={14} className={`${cfg.color} ${loading ? "animate-spin" : ""}`} />
+        </button>
       </div>
 
       {/* Metrics grid */}
@@ -104,7 +155,7 @@ export default function GatewayStatus() {
             <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
             <YAxis domain={[95, 100]} tick={{ fontSize: 10, fill: "#6b7280" }} />
             <Tooltip
-              contentStyle={{ background: "hsl(222 47% 14%)", border: "1px solid hsl(217 33% 20%)", borderRadius: "8px", fontSize: "12px" }}
+              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
               labelStyle={{ color: "#9ca3af" }}
               itemStyle={{ color: "#22c55e" }}
             />

@@ -11,7 +11,8 @@ import ModelUsage from "@/components/ModelUsage";
 import CronJobs from "@/components/CronJobs";
 import SkillLogs from "@/components/SkillLogs";
 import SystemHealth from "@/components/SystemHealth";
-import PixelOffice from "@/components/PixelOffice";
+import dynamic from "next/dynamic";
+const PixelOffice = dynamic(() => import("@/components/PixelOffice"), { ssr: false });
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
 

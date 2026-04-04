@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   :root {
     --background: 222 47% 11%;
@@ -13,6 +23,21 @@
     --muted-foreground: 215 20% 65%;
     --primary: 217 91% 60%;
     --primary-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --radius: 0.5rem;
+  }
+
+  .light {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --muted: 210 40% 93%;
+    --muted-foreground: 215 16% 47%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
     --radius: 0.5rem;
@@ -35,14 +60,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(222 47% 11%);
+  background: hsl(var(--background));
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(217 33% 25%);
+  background: hsl(var(--border));
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(217 33% 35%);
+  background: hsl(var(--muted-foreground));
 }
 
 /* Pulse animation for refresh */
@@ -106,4 +131,46 @@
 /* Recharts custom */
 .recharts-tooltip-wrapper {
   outline: none !important;
+}
+
+/* Toast notifications */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.25s ease forwards;
+}
+
+.toast-exit {
+  animation: toast-out 0.25s ease forwards;
+}
+
+/* Refreshing flash animation */
+@keyframes refresh-flash {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.refreshing-flash {
+  animation: refresh-flash 0.8s ease-in-out;
 }
