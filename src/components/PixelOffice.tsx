@@ -304,60 +304,207 @@ const CHARACTER_DRAWERS = [drawLuffy, drawNami, drawRobin, drawSanji, drawUsopp,
 
 // ─── Scene ────────────────────────────────────────────────────────────────
 function drawBG(ctx: CanvasRenderingContext2D, t: number) {
-  // Sky/wall gradient
-  r(ctx, 0, 0, CW, 65, "#0d0d2a");
-  // Wall panels
-  for (let x = 0; x < CW; x += 28) {
-    vl(ctx, x, 0, 60, "#151530");
-    vl(ctx, x+1, 0, 60, "#1a1a40");
-  }
-  // Neon trim strip
-  hl(ctx, 0, 58, CW, "#3a3a7a");
-  ctx.fillStyle = `rgba(80,80,200,${0.15 + Math.sin(t*0.5)*0.05})`;
-  ctx.fillRect(0, 55 * S, CW * S, 5 * S);
+  // ── Sky (ocean horizon) ──────────────────────────────────────────────
+  // Animated sky gradient
+  const skyShift = Math.sin(t * 0.2) * 0.05;
+  const grad = ctx.createLinearGradient(0, 0, 0, 45 * S);
+  grad.addColorStop(0, "#1a3a6a");
+  grad.addColorStop(0.5, "#2255aa");
+  grad.addColorStop(1, "#4488cc");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CW * S, 45 * S);
 
-  // Floor
-  for (let row = 0; row < 14; row++) {
-    for (let col = 0; col < CW; col += 2) {
-      const shade = (row + Math.floor(col / 2)) % 2 === 0 ? "#111128" : "#0e0e22";
-      r(ctx, col, 59 + row * 7, 2, 7, shade);
+  // Clouds drifting
+  const clouds = [
+    { bx: 10, by: 5, w: 20, spd: 0.3 },
+    { bx: 70, by: 8, w: 30, spd: 0.18 },
+    { bx: 150, by: 4, w: 22, spd: 0.25 },
+  ];
+  clouds.forEach(cl => {
+    const cx = ((cl.bx + t * cl.spd * 20) % (CW + cl.w)) - cl.w;
+    r(ctx, cx, cl.by, cl.w, 3, "#c8ddf0");
+    r(ctx, cx+2, cl.by-2, cl.w-4, 3, "#ddeeff");
+    r(ctx, cx+4, cl.by-3, cl.w-8, 2, "#ffffff");
+  });
+
+  // ── Ocean waves ──────────────────────────────────────────────────────
+  // Far sea
+  r(ctx, 0, 38, CW, 8, "#1a5588");
+  r(ctx, 0, 42, CW, 4, "#1e6699");
+  // Wave crests (animated)
+  for (let wx = 0; wx < CW; wx += 18) {
+    const woff = Math.floor(Math.sin(t * 1.5 + wx * 0.2) * 2);
+    hl(ctx, wx, 39 + woff, 10, "#4499cc");
+    hl(ctx, wx + 5, 40 + woff, 6, "#88ccee");
+  }
+  // Sea foam / spray at hull
+  for (let fx = 0; fx < CW; fx += 10) {
+    const fo = Math.floor(Math.sin(t * 2 + fx * 0.3) * 1.5);
+    d(ctx, fx + 2, 43 + fo, "#aaddff");
+    d(ctx, fx + 5, 44 + fo, "#cceeff");
+  }
+
+  // ── Going Merry hull (white) ─────────────────────────────────────────
+  r(ctx, 0, 44, CW, 4, "#f0f0e8");
+  hl(ctx, 0, 44, CW, "#d8d8c8"); // shadow top
+  hl(ctx, 0, 47, CW, "#c8c8b8"); // shadow bottom
+  // Blue stripe on hull
+  r(ctx, 0, 45, CW, 2, "#2255aa");
+
+  // ── Ship wall (wood paneling below deck) ─────────────────────────────
+  r(ctx, 0, 48, CW, 12, "#7a4e2a");
+  // Horizontal wood planks on wall
+  for (let wy = 48; wy < 60; wy += 4) {
+    hl(ctx, 0, wy, CW, "#8a5e3a");
+    hl(ctx, 0, wy+1, CW, "#6a3e1a");
+  }
+  // Vertical support beams
+  for (let bx = 0; bx < CW; bx += 36) {
+    r(ctx, bx, 48, 3, 12, "#5a3010");
+    r(ctx, bx+1, 48, 1, 12, "#8a6040");
+  }
+  // Wall top rail
+  r(ctx, 0, 48, CW, 2, "#aa7040");
+  hl(ctx, 0, 48, CW, "#cc9060");
+
+  // ── Deck (wooden planks) ─────────────────────────────────────────────
+  // Base deck color
+  r(ctx, 0, 59, CW, CH - 59, "#7a5028");
+  // Plank rows
+  for (let py = 59; py < CH - 8; py += 5) {
+    hl(ctx, 0, py, CW, "#8a6030");
+    hl(ctx, 0, py+1, CW, "#6a4018");
+    hl(ctx, 0, py+4, CW, "#5a3010");
+  }
+  // Plank vertical breaks (staggered)
+  for (let px = 0; px < CW; px += 22) {
+    const offset = ((px / 22) % 2) * 11;
+    vl(ctx, px + offset, 59, CH - 67, "#5a3010");
+  }
+  // Deck nails
+  for (let nx = 4; nx < CW; nx += 22) {
+    for (let ny = 61; ny < CH - 10; ny += 5) {
+      d(ctx, nx, ny, "#442200");
     }
   }
-  // Floor grid lines
-  for (let x = 0; x < CW; x += 14) vl(ctx, x, 59, 100, "#1a1a3a");
-  for (let y = 59; y < CH - 8; y += 7) hl(ctx, 0, y, CW, "#1a1a3a");
 
-  // Carpet (center)
-  r(ctx, 60, 62, 100, 88, "#1e0a3a");
-  hl(ctx, 60, 62, 100, "#3a1a5a"); hl(ctx, 60, 149, 100, "#3a1a5a");
-  vl(ctx, 60, 62, 88, "#3a1a5a"); vl(ctx, 159, 62, 88, "#3a1a5a");
-  // Carpet pattern dots
-  for (let px = 65; px < 158; px += 10) {
-    for (let py = 67; py < 148; py += 10) {
-      d(ctx, px, py, "#2a0a4a");
-    }
+  // ── Rope coils on deck corners ───────────────────────────────────────
+  // Left coil
+  r(ctx, 1, 62, 6, 3, "#aa8844");
+  r(ctx, 2, 61, 4, 5, "#aa8844");
+  hl(ctx, 1, 63, 6, "#cc9955");
+  // Right coil
+  r(ctx, CW-7, 62, 6, 3, "#aa8844");
+  r(ctx, CW-6, 61, 4, 5, "#aa8844");
+  hl(ctx, CW-7, 63, 6, "#cc9955");
+
+  // ── Ropes from mast (hanging diagonals) ─────────────────────────────
+  // Left rope
+  for (let i = 0; i < 20; i++) {
+    d(ctx, 5 + i * 2, 2 + i, "#cc9944");
+  }
+  // Right rope
+  for (let i = 0; i < 20; i++) {
+    d(ctx, CW - 5 - i * 2, 2 + i, "#cc9944");
+  }
+  // Horizontal rope rail at wall top
+  for (let rx = 0; rx < CW; rx += 3) {
+    const sag = Math.sin(rx / CW * Math.PI) * 2;
+    d(ctx, rx, Math.round(48 + sag), "#cc9944");
+    d(ctx, rx+1, Math.round(48 + sag), "#bb8833");
   }
 }
 
-function drawWindow(ctx: CanvasRenderingContext2D, x: number, t: number) {
-  // Frame (neon style)
-  r(ctx, x, 4, 26, 24, "#0a0a2a");
-  r(ctx, x+1, 5, 24, 22, "#001a33");
-  // Sky
-  r(ctx, x+2, 6, 10, 9, "#0a1a3a");
-  r(ctx, x+14, 6, 9, 9, "#0a1a3a");
-  r(ctx, x+2, 17, 10, 8, "#0a1a3a");
-  r(ctx, x+14, 17, 9, 8, "#0a1a3a");
-  // Animated clouds
-  const cx = (Math.floor(t * 5)) % 14;
-  r(ctx, x+2+cx, 7, 4, 1, "#1a3a6a"); r(ctx, x+1+cx, 8, 6, 1, "#1a3a6a"); r(ctx, x+2+cx, 9, 4, 1, "#1a3a6a");
-  // Neon frame glow
-  ctx.strokeStyle = `rgba(0,150,255,${0.4 + Math.sin(t)*0.1})`;
-  ctx.lineWidth = S * 0.8;
-  ctx.strokeRect(x * S, 4 * S, 26 * S, 24 * S);
-  // Window light on floor
-  ctx.fillStyle = `rgba(0,80,200,${0.04 + Math.sin(t * 0.5) * 0.01})`;
-  ctx.fillRect((x + 2) * S, 59 * S, 22 * S, 80 * S);
+// Draw a circular porthole window (Going Merry style)
+function drawPorthole(ctx: CanvasRenderingContext2D, cx: number, cy: number, t: number) {
+  const R = 11; // radius in logical px
+
+  // Outer brass ring
+  ctx.beginPath();
+  ctx.arc(cx * S, cy * S, (R+3) * S, 0, Math.PI*2);
+  ctx.fillStyle = "#8a6020";
+  ctx.fill();
+  // Brass highlight
+  ctx.beginPath();
+  ctx.arc(cx * S, cy * S, (R+2) * S, -Math.PI*0.8, -Math.PI*0.2);
+  ctx.strokeStyle = "#ccaa44";
+  ctx.lineWidth = S * 1.5;
+  ctx.stroke();
+
+  // Inner ring (dark metal)
+  ctx.beginPath();
+  ctx.arc(cx * S, cy * S, (R+1) * S, 0, Math.PI*2);
+  ctx.fillStyle = "#443010";
+  ctx.fill();
+
+  // Glass (ocean view)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx * S, cy * S, R * S, 0, Math.PI*2);
+  ctx.clip();
+
+  // Sky portion (top half)
+  const skyGrad = ctx.createLinearGradient(0, (cy-R)*S, 0, cy*S);
+  skyGrad.addColorStop(0, "#2255aa");
+  skyGrad.addColorStop(1, "#4488cc");
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect((cx-R)*S, (cy-R)*S, R*2*S, R*S);
+
+  // Ocean (bottom half)
+  const seaGrad = ctx.createLinearGradient(0, cy*S, 0, (cy+R)*S);
+  seaGrad.addColorStop(0, "#1a6699");
+  seaGrad.addColorStop(1, "#0a3355");
+  ctx.fillStyle = seaGrad;
+  ctx.fillRect((cx-R)*S, cy*S, R*2*S, R*S);
+
+  // Animated wave in porthole
+  for (let wx = cx-R; wx < cx+R; wx += 4) {
+    const wh = Math.floor(Math.sin(t * 1.5 + wx * 0.4) * 2);
+    r(ctx, wx, cy + wh, 3, 1, "#4499bb");
+    r(ctx, wx+1, cy + wh - 1, 2, 1, "#88ccee");
+  }
+
+  // Seagull (tiny, animated)
+  const bx = cx - R + ((t * 15) % (R*2.2));
+  const by = cy - R + 3 + Math.sin(t * 2 + cx) * 2;
+  if (bx < cx + R - 1) {
+    r(ctx, Math.round(bx), Math.round(by), 2, 1, "#ffffff");
+    d(ctx, Math.round(bx)-1, Math.round(by)+1, "#ffffff");
+    d(ctx, Math.round(bx)+2, Math.round(by)+1, "#ffffff");
+  }
+
+  // Reflection glare
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.beginPath();
+  ctx.ellipse((cx-4)*S, (cy-5)*S, 3*S, 5*S, -0.5, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+
+  // Cross divider (porthole frame bars)
+  ctx.fillStyle = "#7a5520";
+  ctx.fillRect((cx-1)*S, (cy-R)*S, 2*S, R*2*S);
+  ctx.fillRect((cx-R)*S, (cy-1)*S, R*2*S, 2*S);
+  ctx.fillStyle = "#aa8840";
+  ctx.fillRect(cx*S, (cy-R)*S, S, R*2*S);
+  ctx.fillRect((cx-R)*S, cy*S, R*2*S, S);
+
+  // Bolts at 4 corners of brass ring
+  const boltPos = [[-8,-8],[8,-8],[-8,8],[8,8]];
+  boltPos.forEach(([bpx,bpy]) => {
+    ctx.beginPath();
+    ctx.arc((cx+bpx)*S, (cy+bpy)*S, S*1.2, 0, Math.PI*2);
+    ctx.fillStyle = "#cc9933";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc((cx+bpx)*S, (cy+bpy)*S, S*0.6, 0, Math.PI*2);
+    ctx.fillStyle = "#665511";
+    ctx.fill();
+  });
+
+  // Warm light on deck below
+  ctx.fillStyle = `rgba(180,220,255,${0.05 + Math.sin(t*0.5)*0.02})`;
+  ctx.fillRect((cx-R)*S, 59*S, R*2*S, 80*S);
 }
 
 function drawDesk(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -511,20 +658,44 @@ export default function PixelOffice() {
     ctx.clearRect(0, 0, CW * S, CH * S);
     drawBG(ctx, t);
 
-    // Windows
-    drawWindow(ctx, 5,  t);
-    drawWindow(ctx, 97, t);
-    drawWindow(ctx, 189, t);
+    // Portholes (on ship wall)
+    drawPorthole(ctx, 18,  53, t);
+    drawPorthole(ctx, 110, 53, t);
+    drawPorthole(ctx, 202, 53, t);
 
-    // Plants (small)
-    for (const px of [1, 213]) {
-      // Pot
-      r(ctx, px, 110, 7, 8, "#5a2a0a");
-      // Leaves
-      r(ctx, px+1, 105, 5, 6, "#1a5a1a");
-      r(ctx, px-1, 107, 3, 4, "#2a7a2a");
-      r(ctx, px+4, 107, 3, 4, "#2a7a2a");
-    }
+    // Jolly Roger flag (top left corner — on mast suggestion)
+    const flagWave = Math.sin(t * 2) * 1.5;
+    // Mast stub at top
+    vl(ctx, 3, 0, 12, "#5a3010");
+    r(ctx, 4, 0, 2, 12, "#7a4a20");
+    // Flag
+    r(ctx, 5, 1, 14, 9, "#111111");
+    hl(ctx, 5, 1+Math.round(flagWave), 14, "#1a1a1a");
+    // Skull
+    r(ctx, 9, 2, 6, 4, "#eeeeee");
+    r(ctx, 10, 5, 4, 2, "#eeeeee");
+    d(ctx, 10, 3, "#111111"); d(ctx, 13, 3, "#111111");
+    // Crossbones
+    d(ctx, 8, 6, "#eeeeee"); d(ctx, 15, 6, "#eeeeee");
+    d(ctx, 9, 7, "#eeeeee"); d(ctx, 14, 7, "#eeeeee");
+    d(ctx, 10, 8, "#eeeeee"); d(ctx, 13, 8, "#eeeeee");
+    d(ctx, 8, 8, "#eeeeee"); d(ctx, 15, 8, "#eeeeee");
+
+    // Barrel (right side — Going Merry prop)
+    r(ctx, CW-12, 100, 10, 14, "#6a4010");
+    hl(ctx, CW-12, 100, 10, "#8a5a20"); hl(ctx, CW-12, 107, 10, "#8a5a20"); hl(ctx, CW-12, 113, 10, "#8a5a20");
+    // Barrel hoops (metal)
+    r(ctx, CW-13, 102, 12, 2, "#666666");
+    r(ctx, CW-13, 109, 12, 2, "#666666");
+    hl(ctx, CW-13, 102, 12, "#888888"); hl(ctx, CW-13, 109, 12, "#888888");
+
+    // Anchor (left wall decoration)
+    vl(ctx, 4, 65, 18, "#888899");
+    r(ctx, 2, 65, 5, 2, "#888899"); // stock
+    r(ctx, 2, 80, 2, 4, "#888899"); r(ctx, 7, 80, 2, 4, "#888899"); // flukes
+    d(ctx, 3, 83, "#888899"); d(ctx, 8, 83, "#888899"); // tips
+    r(ctx, 4, 62, 3, 4, "#aaaaaa"); // ring
+    hl(ctx, 3, 62, 5, "#cccccc");
 
     // Draw all workstations
     AGENTS.forEach((agent, i) => {
