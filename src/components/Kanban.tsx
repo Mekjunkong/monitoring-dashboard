@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners, DragOverlay } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners, DragOverlay, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Plus, Filter, User, ChevronDown } from "lucide-react";
 import { projects, tasks as initialTasks, Task, Priority, TaskStatus } from "@/data/mockData";
+import { useToast } from "@/components/Toast";
 
 const priorityConfig: Record<Priority, { label: string; color: string; bg: string; border: string }> = {
   high: { label: "High", color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/30" },
@@ -102,6 +103,7 @@ function KanbanColumn({
   column: { id: TaskStatus; label: string };
   tasks: Task[];
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const columnColors: Record<TaskStatus, string> = {
     todo: "text-muted-foreground",
     inprogress: "text-blue-400",
@@ -109,7 +111,7 @@ function KanbanColumn({
   };
 
   return (
-    <div className="flex flex-col bg-muted/30 rounded-xl p-3 min-h-[400px] min-w-[260px] flex-1">
+    <div ref={setNodeRef} className={`flex flex-col bg-muted/30 rounded-xl p-3 min-h-[400px] min-w-[260px] flex-1 transition-colors ${isOver ? "ring-2 ring-primary/50 bg-primary/5" : ""}`}>
       {/* Column header */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
